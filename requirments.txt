@@ -1,0 +1,7 @@
+# Raspberry Pi
+RPi.GPIO==0.7.1
+gpiozero==1.6.2
+
+# Scraping Weather
+selenium==4.33.0
+chromedriver-binary==139.0.7223.0.0
