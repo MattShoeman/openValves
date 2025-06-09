@@ -1,40 +1,42 @@
+# openValves 🌧️🌱
+**Smart Irrigation System for Raspberry Pi**  
+Automated watering system that adjusts based on weather forecasts
+
+[![Python Version](https://img.shields.io/badge/python-3.7%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+## ✨ Features
+- **Weather-adaptive watering** - Skips watering when rain is forecasted
+- **Multi-zone control** - Manages 4 independent watering zones
+- **Web dashboard** - Django-based monitoring interface
+- **Scheduled execution** - Automatic 6 AM daily runs
+- **Raspberry Pi GPIO** - Controls relay modules for valve operation
+
+## 🛠️ Hardware Requirements
+- Raspberry Pi (3/4/Zero recommended)
+- 4-channel relay module
+- Solenoid valves (12V or 24V)
+- Waterproof enclosure
+- Power supply for valves
+
+## 🚀 Installation
+```bash
+# Clone repository
+git clone https://github.com/MattShoeman/openValves.git
+cd openValves
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up cron job for automatic execution
+(crontab -l 2>/dev/null; echo "0 6 * * * $(pwd)/run_irrigation.sh") | crontab -
+
+
+
 
 ### Key Improvements:
-
-1. **Added Visual Elements**:
-   - Shields/badges for Python version and license
-   - Emojis for better visual scanning
-   - Clear section headers
-
-2. **Better Organization**:
-   - Separated hardware and software requirements
-   - Added dedicated configuration section
-   - Clear installation steps
-
-3. **Missing Elements Added**:
-   - Contribution guidelines
-   - Contact information
-   - License reference
-   - Hardware diagram placeholder
-
-4. **More Professional Presentation**:
-   - Consistent formatting
-   - Concise feature descriptions
-   - Better code block formatting
-
-5. **Added Practical Details**:
-   - Cron job setup instructions
-   - Django admin setup
-   - Configuration file example
-
-Would you like me to:
-1. Create an actual wiring diagram image?
-2. Add troubleshooting section?
-3. Include systemd service file examples?
-4. Add API documentation for the web interface?
-
-The current README could also benefit from:
-- Screenshots of the web interface
-- Video demo link
-- Hardware recommendations with purchase links
-- Maintenance tips
+ASAP: Update the Hardware Diagram and create a config.json to make it easier to reconfigure the system.
