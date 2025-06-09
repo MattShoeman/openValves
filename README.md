@@ -26,6 +26,11 @@ Setup:
     h.  python3 -m venv venv
     i.  source venv/bin/activate
     j.  pip install -r requirements.txt
+    k.  sudo apt intstall chromium-browser
+3.  Add the python script to CRON
+    a.  crontab -e
+    b.  Add this line to the cron file.
+        0 6 * * * /home/pi/openValves/run_irrigation.sh
 
     
 

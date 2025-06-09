@@ -1,10 +1,22 @@
+#!/usr/bin/env python3
+
 import RPi.GPIO as GPIO
 import time
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+import logging
+
+def setup_logging():
+    """Configure logging for the script"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
 
 # Relay GPIO Pins (BCM numbering)
 RELAY_PINS = [17, 18, 27, 22]  # Update these to match your wiring
@@ -27,49 +39,92 @@ def water_zone(zone_idx, duration_min):
     GPIO.output(RELAY_PINS[zone_idx], GPIO.HIGH)  # Relay OFF
 
 def get_weather_forecast():
+    """Get comprehensive weather updates from weather.gov"""
+    setup_logging()
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
+    options.binary_location = '/usr/bin/chromium-browser'
+    service = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=service, options=options)
     
-    driver = webdriver.Chrome(options=options)
     try:
-        driver.get("https://forecast.weather.gov/MapClick.php?lat=44.591248&lon=-123.272118")
+        # Navigate to the forecast page
+        url = "https://forecast.weather.gov/MapClick.php?lat=44.591248&lon=-123.272118"
+        driver.get(url)
+        logging.info(f"Accessing weather data from: {url}")
+
+        # Wait for critical elements to load
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "seven-day-forecast-body")))
 
-        # Get forecasted high temperatures
+        # Get current conditions
+        current_temp = driver.find_element(
+            By.CLASS_NAME, "myforecast-current-lrg").text
+        print(f"Current temp: {current_temp}")
+
+        # Get extended forecast
         forecast_items = driver.find_elements(
-            By.CSS_SELECTOR, "#seven-day-forecast-list .forecast-tombstone")
-        
-        # Find the next high temperature in the forecast
-        next_high_temp = None
+            By.CSS_SELECTOR, "#seven-day-forecast-list li.forecast-tombstone")
+
+        # DEBUG: Print raw HTML of each forecast item
+        #print(f"\nFound {len(forecast_items)} forecast items:")
+        #for i, item in enumerate(forecast_items, 1):
+        #    print(f"\n--- Item {i} ---")
+        #    print(item.get_attribute('outerHTML'))  # This prints the full HTML element
+        #    print("----------------")
+
+        forecast_data = []
         for item in forecast_items:
-            temp_element = item.find_element(By.CLASS_NAME, "temp")
-            temp_text = temp_element.text
-            if 'High' in temp_text:
-                next_high_temp = float(temp_text.split()[1].replace('°F', ''))
-                break
-        
-        # Check for precipitation in detailed forecast
+            try:
+                temp_element = item.find_element(By.CLASS_NAME, "temp")
+                period = item.find_element(By.CLASS_NAME, "period-name").text
+                temp = temp_element.text
+                desc = item.find_element(By.CLASS_NAME, "short-desc").text
+                
+                #print(f"Found forecast: {period} - {temp} - {desc}")  # Debug print
+                
+                forecast_data.append({
+                    'period': period,
+                    'temperature': temp,
+                    'is_high': 'High' in temp,
+                    'description': desc
+                })
+            except NoSuchElementException as e:
+                logging.warning(f"Missing element in forecast item: {str(e)}")
+                continue
+
+        # Check for precipitation
         detailed_forecast = driver.find_element(
             By.ID, "detailed-forecast-body").text.lower()
-        rain_today = any(word in detailed_forecast 
-                        for word in ["rain", "shower", "precip"])
-        
-        if next_high_temp is None:
-            print("Warning: No high temperature found in forecast")
-            next_high_temp = 75  # Default temperature if none found
-        
+        rain_expected = any(word in detailed_forecast 
+                          for word in ["rain", "shower", "precip"])
+
+        # Find next high temp with fallback
+        next_high = next((f for f in forecast_data if f['is_high']), None)
+        next_high_temp = float(next_high['temperature'].split()[1].replace('°F', '')) if next_high else 75
+
         return {
             'next_high_temp': next_high_temp,
-            'rain_expected': rain_today
+            'rain_expected': rain_expected,
+            'forecast_data': forecast_data  # Include full forecast data for debugging
+        }
+
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
+        return {
+            'next_high_temp': 75,
+            'rain_expected': False,
+            'forecast_data': [],
+            'error': str(e)
         }
     finally:
         driver.quit()
 
 def calculate_watering_schedule(weather):
     """Determine watering duration for each zone based on weather"""
-    base_times = [15, 45, 15, 25]  # Base minutes per zone
+    #"Patio", "Flowers", "Fig", "Apple"]
+    base_times = [10, 20, 10, 20]  # Base minutes per zone
     
     # Adjust for weather conditions
     if weather['rain_expected']:
@@ -97,7 +152,7 @@ def main():
         for zone, duration in enumerate(schedule):
             if duration > 0:  # Skip zones with 0 duration
                 water_zone(zone, duration)
-                time.sleep(60)  # Short break between zones
+                time.sleep(15)  # Short break between zones
         
         print("Watering complete!")
         
@@ -108,8 +163,7 @@ def main():
 
 if __name__ == "__main__":
     # Run at 6 AM daily (use cron job for scheduling)
-    main()
-    #if 6 <= datetime.now().hour < 10:  # Only run between 6-10 AM
-    #    main()
-    #else:
-    #    print("Not the right time for watering (6-10 AM only)")
+    if 5 <= datetime.now().hour < 10:  # Only run between 5-10 AM
+        main()
+    else:
+        print("Not the right time for watering (6-10 AM only)")
