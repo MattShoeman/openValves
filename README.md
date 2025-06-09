@@ -35,8 +35,8 @@ pip install -r requirements.txt
 # Set up cron job for automatic execution
 (crontab -l 2>/dev/null; echo "0 6 * * * $(pwd)/run_irrigation.sh") | crontab -
 
-
-# 🚀 **What's Next?**
+'''
+# 🚀 What's Next?
 - ** Hardware shield
 - ** Web dashboard (Django-based monitoring interface)
 - ** Sub-zones for precise control of garden watering beds
