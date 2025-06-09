@@ -38,5 +38,8 @@ pip install -r requirements.txt
 
 
 
-### Key Improvements:
-ASAP: Update the Hardware Diagram and create a config.json to make it easier to reconfigure the system.
+## What's Next?
+- ** Hardware shield
+- ** Web dashboard (Django-based monitoring interface)
+- ** Sub-zones for precise control of garden watering beds
+
