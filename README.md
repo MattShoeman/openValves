@@ -37,7 +37,7 @@ pip install -r requirements.txt
 
 ```
 # 🚀 What's Next?
-- ** Hardware shield
-- ** Web dashboard (Django-based monitoring interface)
-- ** Sub-zones for precise control of garden watering beds
+- Hardware shield
+- Web dashboard (Django-based monitoring interface)
+- Sub-zones for precise control of garden watering beds
 
