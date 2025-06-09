@@ -4,8 +4,8 @@ import time
 
 # Configuration
 RELAY_PINS = [17, 18, 27, 22]  # Update these to match your GPIO pins
-ZONE_NAMES = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"]
-TEST_DURATION = 10  # seconds for valve test
+ZONE_NAMES = ["Patio", "Flowers", "Fig", "Apple"]
+TEST_DURATION = 20  # seconds for valve test
 
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
