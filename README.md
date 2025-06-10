@@ -37,7 +37,10 @@ pip install -r requirements.txt
 
 ```
 # :bulb: What's Next?
-- Hardware shield
-- Web dashboard (Django-based monitoring interface)
+- Design a hardware shield
+- Switch the Webcrawling from www.weather.gov to https://openweathermap.org
+- Watering lawn grass in Oregon requires 1" of water per week.  Sprinklers output 3 gallons per minute.  A 90 degree sprinkler should run for about an hour each week, to get deep penetration. Add some of these computations into the web interface to help determine proper duration and frequency of water.
+- Web dashboard (Comparing Dash and Django monitoring interfaces)
+- Use the interface to save a schedule as a JSON file.  The Cron will run the control script at 6 AM.
 - Sub-zones for precise control of garden watering beds
 
