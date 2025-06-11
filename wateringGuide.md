@@ -69,7 +69,7 @@ Expected Penetration in Clay:
         Reduce by 50% if 0.25-0.5" forecasted
 
 🌦️ Weather-Based Adjustments
-python
+```python
 
 # Smart system logic example
 def adjust_watering(base_time, weather):
@@ -81,14 +81,15 @@ def adjust_watering(base_time, weather):
         return base_time * 1.15
     else:
         return base_time
-
+```
 📊 Watering Cheat Sheet
 
 Quick Reference:
-plaintext
+```plaintext
 
 Plant Type      | Summer Runtime
 ----------------|---------------
 Lawn (500 sq ft)| 52 min (1")
 Vegetable Garden| 20 min daily
 New Tree        | 60 min drip 2x/week
+```
