@@ -33,7 +33,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Set up cron job for automatic execution
-(crontab -l 2>/dev/null; echo "0 6 * * * $(pwd)/run_irrigation.sh") | crontab -
+(crontab -l 2>/dev/null; echo "0 6 * * Mon $(pwd)/run_irrigation.sh") | crontab -
 
 ```
 # :bulb: What's Next?
