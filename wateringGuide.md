@@ -28,9 +28,7 @@
 ```math
 \text{Coverage Area} = \pi r^2 \times \frac{\text{angle}}{360} = 314 \text{ sq ft}
 \text{Runtime (min)} = \frac{\text{Area} \times \text{Depth} \times 0.623}{\text{GPM}}
-
-Sample Calculation:
-plaintext
+```
 
 Lawn Area: 400 sq ft  
 Sprinklers: 2 × 3GPM  
