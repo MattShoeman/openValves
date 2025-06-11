@@ -42,14 +42,14 @@ Clay	0.25"/hr	Four 15-min cycles	Puddles form quickly
 💦 Drip Irrigation Guide
 
 Tree Watering Example:
-plaintext
+```plaintext
 
 3 × 1GPH emitters × 62 hours = 186 gallons
 Expected Penetration in Clay:
 [0-2hrs]  → Top 4" moist
 [24hrs]   → Reaches 12"
 [62hrs]   → Deep soak to 16"
-
+```
 ⚙️ System Configuration Tips
 
     Morning Watering (5-9 AM) reduces evaporation
