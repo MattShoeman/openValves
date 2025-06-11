@@ -1,0 +1,14 @@
+{
+  "daily": {
+    "Patio": 40,
+    "Flowers": 60,
+    "Fig": 40,
+    "Apple": 60
+  },
+  "special": {
+    "2023-07-04": {
+      "Patio": 5,
+      "Flowers": 10
+    }
+  }
+}
