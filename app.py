@@ -16,6 +16,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 # Configure logging
 logging.basicConfig(
@@ -27,7 +29,7 @@ logging.basicConfig(
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-# Valve configuration (match your physical setup)
+# Valve configuration
 VALVE_NAMES = ["Patio", "Flowers", "Fig", "Apple"]
 VALVE_PINS = [17, 18, 27, 22]  # BCM numbering
 RELAY_ACTIVE = GPIO.LOW  # Change to GPIO.HIGH if your relays activate on HIGH
@@ -52,17 +54,118 @@ weather_data = {
 SCHEDULE_FILE = "schedules.json"
 DEFAULT_SCHEDULE = {
     "weekly": {
-        "Patio": 10,
-        "Flowers": 20,
-        "Fig": 10,
-        "Apple": 20
+        "Sunday": {"Patio": 30, "Flowers": 15, "Fig": 20, "Apple": 25},
+        "Monday": {"Patio": 20, "Flowers": 20, "Fig": 15, "Apple": 20},
+        "Tuesday": {"Patio": 20, "Flowers": 15, "Fig": 20, "Apple": 25},
+        "Wednesday": {"Patio": 25, "Flowers": 20, "Fig": 15, "Apple": 20},
+        "Thursday": {"Patio": 20, "Flowers": 15, "Fig": 20, "Apple": 25},
+        "Friday": {"Patio": 30, "Flowers": 20, "Fig": 15, "Apple": 20},
+        "Saturday": {"Patio": 40, "Flowers": 25, "Fig": 30, "Apple": 40}
     },
+    "special": {}
 }
 
 # Ensure schedule file exists
 if not Path(SCHEDULE_FILE).exists():
     with open(SCHEDULE_FILE, 'w') as f:
-        json.dump(DEFAULT_SCHEDULE, f)
+        json.dump(DEFAULT_SCHEDULE, f, indent=2)
+
+# Initialize scheduler
+scheduler = BackgroundScheduler(daemon=True)
+scheduler.start()
+
+# Utility functions
+def load_schedule():
+    """Load schedule from JSON file"""
+    try:
+        with open(SCHEDULE_FILE, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logging.error(f"Error loading schedule: {str(e)}")
+        return DEFAULT_SCHEDULE
+
+def control_valve(valve_idx, state, duration_min=10):
+    """Control a single valve with safety checks and timed shutoff"""
+    try:
+        pin = VALVE_PINS[valve_idx]
+        if state:
+            # Cancel any existing timer for this valve
+            if hasattr(control_valve, f"timer_{valve_idx}"):
+                old_timer = getattr(control_valve, f"timer_{valve_idx}")
+                if old_timer and old_timer.is_alive():
+                    old_timer.cancel()
+            
+            # Turn valve ON
+            GPIO.output(pin, RELAY_ACTIVE)
+            valve_states[valve_idx] = True
+            
+            # Log watering event
+            with history_lock:
+                weather_condition = "Hot" if weather_data['next_high_temp'] > 85 else "Normal"
+                watering_history.append({
+                    'time': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'zone': VALVE_NAMES[valve_idx],
+                    'duration': duration_min,
+                    'weather': weather_condition
+                })
+            
+            # Start timer to turn off
+            timer = threading.Timer(duration_min * 60, lambda: control_valve(valve_idx, False))
+            timer.start()
+            setattr(control_valve, f"timer_{valve_idx}", timer)
+            
+            logging.info(f"Valve {VALVE_NAMES[valve_idx]} ON for {duration_min} minutes")
+        else:
+            # Turn valve OFF
+            GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
+            valve_states[valve_idx] = False
+            
+            # Cancel any running timer
+            if hasattr(control_valve, f"timer_{valve_idx}"):
+                timer = getattr(control_valve, f"timer_{valve_idx}")
+                if timer and timer.is_alive():
+                    timer.cancel()
+            
+            logging.info(f"Valve {VALVE_NAMES[valve_idx]} OFF")
+    except Exception as e:
+        logging.error(f"Error controlling valve {VALVE_NAMES[valve_idx]}: {str(e)}")
+
+def run_scheduled_watering():
+    """Run the scheduled watering for today"""
+    try:
+        logging.info("Running scheduled watering")
+        weather = get_weather_forecast()
+        schedules = load_schedule()
+        
+        today = datetime.now().strftime("%A")
+        day_schedule = schedules['weekly'].get(today, {})
+        
+        # Apply weather adjustments
+        for zone, duration in day_schedule.items():
+            if weather['next_high_temp'] > 85:
+                day_schedule[zone] = int(duration * HOT_WEATHER_EXTRA)
+        
+        # Water each zone sequentially
+        for zone_idx, zone_name in enumerate(VALVE_NAMES):
+            if zone_name in day_schedule and day_schedule[zone_name] > 0:
+                control_valve(zone_idx, True, day_schedule[zone_name])
+                time.sleep(15)  # Short break between zones
+        
+    except Exception as e:
+        logging.error(f"Error in scheduled watering: {str(e)}")
+
+def schedule_daily_watering():
+    """Schedule the daily watering job at 6 AM"""
+    trigger = CronTrigger(hour=6, minute=0)
+    scheduler.add_job(
+        run_scheduled_watering,
+        trigger=trigger,
+        name="daily_watering"
+    )
+    logging.info("Scheduled daily watering at 6:00 AM")
+
+# Initialize the daily watering schedule
+schedule_daily_watering()
 
 # Initialize Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -70,7 +173,7 @@ app.title = "Smart Irrigation Dashboard"
 
 # ====================== LAYOUT COMPONENTS ======================
 controls_card = dbc.Card([
-    dbc.CardHeader("Manual Valve Control, for Testing Purposes", className="bg-primary text-white"),
+    dbc.CardHeader("Manual Valve Control", className="bg-primary text-white"),
     dbc.CardBody([
         html.Div([
             dbc.Button(
@@ -113,34 +216,60 @@ status_card = dbc.Card([
 weather_card = dbc.Card([
     dbc.CardHeader("Weather Forecast", className="bg-warning text-dark"),
     dbc.CardBody([
-        dcc.Interval(id="weather-update", interval=3600000),  # Update hourly
+        dcc.Interval(id="weather-update", interval=3600000),
         html.Div(id="weather-summary"),
-        dcc.Graph(id="forecast-graph", config={'displayModeBar': False}),
+        dcc.Graph(
+            id="forecast-graph",
+            config={
+                'displayModeBar': False,
+                'staticPlot': True,      
+                'scrollZoom': False,
+                'doubleClick': False,
+            }
+        ),
         dbc.Button("Update Now", id="update-weather", color="info", className="mt-2")
     ])
 ])
 
-# Updated schedule card
 schedule_card = dbc.Card([
     dbc.CardHeader("Watering Schedule", className="bg-success text-white"),
     dbc.CardBody([
-        html.H5("Weekly Watering Duration (minutes)"),
         dash_table.DataTable(
             id='schedule-editor',
             columns=[
                 {'name': 'Zone', 'id': 'zone', 'editable': False},
-                {'name': 'Duration (min)', 'id': 'duration', 'editable': True, 'type': 'numeric'}
+                *[{'name': day, 'id': f'{day.lower()}_duration', 'editable': True, 'type': 'numeric'} 
+                  for day in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 
+                             'Thursday', 'Friday', 'Saturday']]
             ],
-            data=[{'zone': name, 'duration': DEFAULT_SCHEDULE['weekly'].get(name, 10)} 
-                 for name in VALVE_NAMES],
+            data=[{'zone': name} for name in VALVE_NAMES],
             editable=True,
-            row_deletable=False,
-            style_cell={'textAlign': 'center'},
-            style_header={'fontWeight': 'bold'}
+            style_cell={
+                'textAlign': 'center',
+                'minWidth': '80px',
+                'width': '80px',
+                'maxWidth': '80px'
+            },
+            style_header={
+                'fontWeight': 'bold',
+                'textAlign': 'center'
+            },
+            style_table={'overflowX': 'auto'},
+            style_data_conditional=[
+                {
+                    'if': {'column_id': 'zone'},
+                    'textAlign': 'left',
+                    'minWidth': '100px',
+                    'width': '100px',
+                    'maxWidth': '100px'
+                }
+            ]
         ),
-        dbc.Button("Save Schedule", id="save-schedule", color="primary", className="mt-3"),
-        html.Div(id='schedule-save-status'),
-        html.Hr(),
+        dbc.Button("Save Schedule", 
+                 id="save-schedule", 
+                 color="primary", 
+                 className="mt-3"),
+        html.Div(id='schedule-save-status')
     ])
 ])
 
@@ -178,7 +307,6 @@ app.layout = dbc.Container([
     dcc.Store(id="system-store")
 ], fluid=True)
 
-# ====================== GPIO FUNCTIONS ======================
 # ====================== GPIO FUNCTIONS ======================
 def valve_timer(valve_idx, duration_min):
     """Thread function to turn off valve after duration"""
@@ -245,7 +373,7 @@ def get_weather_forecast():
     driver = webdriver.Chrome(service=service, options=options)
     
     try:
-        # Navigate to forecast page (example coordinates - replace with yours)
+        # Navigate to forecast page
         url = "https://forecast.weather.gov/MapClick.php?lat=44.591248&lon=-123.272118"
         driver.get(url)
         logging.info(f"Accessing weather data from: {url}")
@@ -423,15 +551,21 @@ def update_weather(interval, update_click):
                 ))
             
             fig.update_layout(
-                title="Weather Forecast, scraped from www.weather.gov",
+                title="Weather Forecast",
                 yaxis_title="Temperature (°F)",
                 xaxis_title="Day",
-                hovermode="x unified"
+                hovermode="x unified",
+                dragmode=False,
+                xaxis=dict(fixedrange=True),
+                yaxis=dict(fixedrange=True)
             )
         else:
             fig.update_layout(
                 title="No Forecast Data Available",
-                annotations=[dict(text="Check connection", showarrow=False)]
+                annotations=[dict(text="Check connection", showarrow=False)],
+                dragmode=False,
+                xaxis=dict(fixedrange=True),
+                yaxis=dict(fixedrange=True)
             )
         
         return summary, fig, weather
@@ -445,7 +579,10 @@ def update_weather(interval, update_click):
         error_fig = go.Figure()
         error_fig.update_layout(
             title="Weather Data Error",
-            annotations=[dict(text="Update failed", showarrow=False)]
+            annotations=[dict(text="Update failed", showarrow=False)],
+            dragmode=False,
+            xaxis=dict(fixedrange=True),
+            yaxis=dict(fixedrange=True)
         )
         return error_msg, error_fig, weather_data
 
@@ -457,32 +594,72 @@ def update_history_table(n):
     with history_lock:
         return watering_history
 
+@app.callback(
+    Output('weekly-schedule-editor', 'data'),
+    [Input('day-selector', 'value')],
+    [State('weekly-schedule-editor', 'data')]
+)
+def update_weekly_editor(selected_day, current_data):
+    schedules = load_schedule()
+    day_schedule = schedules['weekly'].get(selected_day, {})
+    return [{'zone': name, 'duration': day_schedule.get(name, 10)} for name in VALVE_NAMES]
 
-# Add these new callbacks
+@app.callback(
+    Output('schedule-editor', 'data'),
+    Input('schedule-editor', 'data_timestamp'),
+    State('schedule-editor', 'data')
+)
+def initialize_schedule_editor(timestamp, current_data):
+    if current_data and any(day in current_data[0] for day in ['sunday_duration', 'monday_duration']):
+        return current_data
+        
+    schedules = load_schedule()
+    schedule_data = []
+    
+    for zone in VALVE_NAMES:
+        zone_data = {'zone': zone}
+        for day in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 
+                   'Thursday', 'Friday', 'Saturday']:
+            zone_data[f'{day.lower()}_duration'] = schedules['weekly'].get(day, {}).get(zone, 10)
+        schedule_data.append(zone_data)
+    
+    return schedule_data
+
 @app.callback(
     Output('schedule-save-status', 'children'),
     Input('save-schedule', 'n_clicks'),
     State('schedule-editor', 'data')
 )
-def save_weekly_schedule(n_clicks, rows):
-    if n_clicks:
-        try:
-            with open(SCHEDULE_FILE, 'r') as f:
-                schedules = json.load(f)
-            
-            weekly_schedule = {row['zone']: max(1, int(row['duration'])) for row in rows}
-            schedules['weekly'] = weekly_schedule
-            
-            with open(SCHEDULE_FILE, 'w') as f:
-                json.dump(schedules, f, indent=2)
-            
-            return dbc.Alert("Weekly schedule saved!", color="success", duration=3000)
-        except Exception as e:
-            return dbc.Alert(f"Error saving: {str(e)}", color="danger")
-    return None
+def save_schedule(n_clicks, table_data):
+    if not n_clicks:
+        return None
+    
+    try:
+        with open(SCHEDULE_FILE, 'r') as f:
+            schedules = json.load(f)
+        
+        # Reconstruct weekly schedule from table data
+        weekly_schedule = {}
+        for day in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 
+                   'Thursday', 'Friday', 'Saturday']:
+            day_key = f'{day.lower()}_duration'
+            weekly_schedule[day] = {}
+            for row in table_data:
+                weekly_schedule[day][row['zone']] = max(0, int(row.get(day_key, 10)))
+        
+        schedules['weekly'] = weekly_schedule
+        
+        with open(SCHEDULE_FILE, 'w') as f:
+            json.dump(schedules, f, indent=2)
+        
+        return dbc.Alert("Schedule saved successfully!", color="success", duration=3000)
+    except Exception as e:
+        return dbc.Alert(f"Error saving schedule: {str(e)}", color="danger")
 
-def cleanup_gpio():
-    """Clean up GPIO on exit"""
+def cleanup():
+    """Clean up resources on exit"""
+    logging.info("Cleaning up resources")
+    scheduler.shutdown()
     for pin in VALVE_PINS:
         GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
     GPIO.cleanup()
@@ -493,8 +670,8 @@ if __name__ == '__main__':
         weather_data = get_weather_forecast()
         
         # Start the server
-        app.run(host='0.0.0.0', port=8050, debug=True)
+        app.run(host='0.0.0.0', port=8050, debug=False)
     except KeyboardInterrupt:
         pass
     finally:
-        cleanup_gpio()
+        cleanup()
