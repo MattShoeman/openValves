@@ -33,39 +33,35 @@ source venv/bin/activate
 # Install dependencies  
 pip install -r requirements.txt  
 
-# Set up cron job for automatic execution  
-(crontab -l 2>/dev/null; echo "0 6 * * Mon $(pwd)/run_irrigation.sh") | crontab -  
-
 🔌 Autostart Setup (Recommended)
 
 Run the dashboard automatically on boot using systemd:
 
     Create a service file:
 ```bash
-
 sudo nano /etc/systemd/system/smart_irrigation.service  
 ```
 
 Paste the following (adjust paths if needed):
-ini
+```ini
+[Unit]
+Description=Smart Irrigation Dashboard
+After=network.target
 
-[Unit]  
-Description=Smart Irrigation Dashboard  
-After=network.target  
+[Service]
+User=user
+WorkingDirectory=/home/user/openValves
+Environment="PATH=/home/user/openValves/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/user/openValves/venv/bin/python /home/user/openValves/app.py
+Restart=always
+RestartSec=10
 
-[Service]  
-User=pi  
-WorkingDirectory=/home/pi/openValves  
-ExecStart=/home/pi/openValves/venv/bin/python /home/pi/openValves/app.py  
-Restart=always  
-RestartSec=10  
-
-[Install]  
-WantedBy=multi-user.target  
+[Install]
+WantedBy=multi-user.target
+```
 
 Enable the service:
 ```bash
-
 sudo systemctl daemon-reload  
 sudo systemctl enable smart_irrigation.service  
 sudo systemctl start smart_irrigation.service  
