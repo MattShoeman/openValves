@@ -33,7 +33,7 @@ source venv/bin/activate
 # Install dependencies  
 pip install -r requirements.txt  
 
-#🔌 Autostart Setup (Recommended)
+## 🔌 Autostart Setup (Recommended)
 
 Run the dashboard automatically on boot using systemd:
 
