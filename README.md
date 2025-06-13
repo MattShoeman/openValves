@@ -2,6 +2,7 @@
 **Smart Irrigation System for Raspberry Pi**  
 Automated watering system that adjusts based on weather forecasts
 
+
 [![Python Version](https://img.shields.io/badge/python-3.7%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
