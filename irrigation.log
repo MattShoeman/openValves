@@ -1,0 +1,11 @@
+2025-06-10 06:00:06,198 - INFO - Accessing weather data from: https://forecast.weather.gov/MapClick.php?lat=44.591248&lon=-123.272118
+Checking weather forecast...
+Current temp: 50°F
+Next forecasted high: 85.0°F
+Error loading schedule: [Errno 2] No such file or directory: 'schedules.json'
+Loaded schedule: {'Patio': 10, 'Flowers': 20, 'Fig': 15, 'Apple': 20}
+Watering Patio for 10 minutes
+Watering Flowers for 20 minutes
+Watering Fig for 15 minutes
+Watering Apple for 20 minutes
+Watering complete!

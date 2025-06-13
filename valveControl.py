@@ -10,6 +10,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 import logging
+import json
+from datetime import datetime
 
 def setup_logging():
     """Configure logging for the script"""
@@ -23,7 +25,6 @@ RELAY_PINS = [17, 18, 27, 22]  # Update these to match your wiring
 ZONE_NAMES = ["Patio", "Flowers", "Fig", "Apple"]
 
 # Weather thresholds (adjust based on your needs)
-RAIN_THRESHOLD = 0.1  # Inches of rain to skip watering
 HOT_WEATHER_EXTRA = 1.5  # Multiplier for watering when >85°F
 
 def setup_relays():
@@ -97,8 +98,6 @@ def get_weather_forecast():
         # Check for precipitation
         detailed_forecast = driver.find_element(
             By.ID, "detailed-forecast-body").text.lower()
-        rain_expected = any(word in detailed_forecast 
-                          for word in ["rain", "shower", "precip"])
 
         # Find next high temp with fallback
         next_high = next((f for f in forecast_data if f['is_high']), None)
@@ -106,7 +105,6 @@ def get_weather_forecast():
 
         return {
             'next_high_temp': next_high_temp,
-            'rain_expected': rain_expected,
             'forecast_data': forecast_data  # Include full forecast data for debugging
         }
 
@@ -114,28 +112,43 @@ def get_weather_forecast():
         logging.error(f"An unexpected error occurred: {str(e)}")
         return {
             'next_high_temp': 75,
-            'rain_expected': False,
             'forecast_data': [],
             'error': str(e)
         }
     finally:
         driver.quit()
 
-def calculate_watering_schedule(weather):
+def calculate_watering_schedule(weather, base_times):
     """Determine watering duration for each zone based on weather"""
-    #"Patio", "Flowers", "Fig", "Apple"]
-    base_times = [10, 20, 10, 20]  # Base minutes per zone
-    
-    # Adjust for weather conditions
-    if weather['rain_expected']:
-        print("Rain expected - reducing watering time")
-        return [t * 0.5 for t in base_times]  # Reduce by 50%
-    
     if weather['next_high_temp'] > 85:
         print(f"Hot weather forecast ({weather['next_high_temp']}°F) - increasing watering time")
-        return [t * HOT_WEATHER_EXTRA for t in base_times]
+        return [int(t * HOT_WEATHER_EXTRA) for t in base_times]
     
     return base_times
+
+def load_schedule():
+    """Load watering durations from schedule file"""
+    try:
+        with open('schedules.json', 'r') as f:
+            schedules = json.load(f)
+        
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Check for special schedule first
+        if today in schedules.get('special', {}):
+            return schedules['special'][today]
+        
+        # Fall back to daily schedule
+        return schedules.get('daily', {})
+    except Exception as e:
+        print(f"Error loading schedule: {e}")
+        # Default durations if file can't be loaded
+        return {
+            "Patio": 10,
+            "Flowers": 20,
+            "Fig": 15,
+            "Apple": 20
+        }
 
 def main():
     setup_relays()
@@ -144,9 +157,20 @@ def main():
         print("Checking weather forecast...")
         weather = get_weather_forecast()
         print(f"Next forecasted high: {weather['next_high_temp']}°F")
-        print(f"Rain expected: {'Yes' if weather['rain_expected'] else 'No'}")
+
+        # Load schedule
+        schedule_durations = load_schedule()
+        print(f"Loaded schedule: {schedule_durations}")
         
-        schedule = calculate_watering_schedule(weather)
+        # Calculate final durations with weather adjustments
+        base_times = [
+            schedule_durations.get("Patio", 10),
+            schedule_durations.get("Flowers", 20),
+            schedule_durations.get("Fig", 15),
+            schedule_durations.get("Apple", 20)
+        ]
+        
+        schedule = calculate_watering_schedule(weather, base_times)
         
         # Water each zone sequentially
         for zone, duration in enumerate(schedule):
@@ -162,8 +186,8 @@ def main():
         GPIO.cleanup()
 
 if __name__ == "__main__":
-    # Run at 6 AM daily (use cron job for scheduling)
-    if 5 <= datetime.now().hour < 10:  # Only run between 5-10 AM
-        main()
-    else:
-        print("Not the right time for watering (6-10 AM only)")
+    main()
+#    if 5 <= datetime.now().hour < 10:  # Only run between 5-10 AM
+#        main()
+#    else:
+#        print("Not the right time for watering (6-10 AM only)")
