@@ -16,7 +16,7 @@ Automated watering system that adjusts based on weather forecasts
 ## 🛠️ Hardware Requirements
 - Raspberry Pi (3/4/Zero recommended)
 - 4-channel relay module
-- Solenoid valves (12V or 24V)
+- Solenoid valves (24VAC)
 - Waterproof enclosure
 - Power supply for valves
 
@@ -32,9 +32,37 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+Paste the following (adjust paths if needed):
 
-# Set up cron job for automatic execution
-(crontab -l 2>/dev/null; echo "0 6 * * * $(pwd)/run_irrigation.sh") | crontab -
+[Unit]
+Description=Smart Irrigation Dashboard
+After=network.target
+
+[Service]
+User=user
+WorkingDirectory=/home/user/openValves
+Environment="PATH=/home/user/openValves/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/user/openValves/venv/bin/python /home/user/openValves/app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+Enable the service:
+
+sudo systemctl daemon-reload  
+sudo systemctl enable smart_irrigation.service  
+sudo systemctl start smart_irrigation.service  
+
+Verify it's running:
+
+sudo systemctl status smart_irrigation.service  
+
+✅ Success: Output shows active (running).
+
+❌ Debug: Check logs with journalctl -u smart_irrigation.service -f.
+
 
 ```
 # :bulb: What's Next?
