@@ -369,7 +369,7 @@ def update_history_table(n):
 
 if __name__ == '__main__':
     try:
-        app.run(host='0.0.0.0', port=8050, debug=True)
+        app.run(host='0.0.0.0', port=8050, debug=False)
     except KeyboardInterrupt:
         pass
     finally:
