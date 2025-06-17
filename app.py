@@ -4,6 +4,7 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import logging
 import time
+import json
 from datetime import datetime
 from gpio_controller import ValveController
 from scheduler import IrrigationScheduler

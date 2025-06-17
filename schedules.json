@@ -1,10 +1,4 @@
 {
-  "daily": {
-    "Patio": 10,
-    "Flowers": 20,
-    "Fig": 15,
-    "Apple": 20
-  },
   "weekly": {
     "Sunday": {
       "Patio": 0,
@@ -19,10 +13,10 @@
       "Apple": 60
     },
     "Tuesday": {
-      "Patio": 0,
+      "Patio": 10,
       "Flowers": 15,
-      "Fig": 0,
-      "Apple": 0
+      "Fig": 10,
+      "Apple": 10
     },
     "Wednesday": {
       "Patio": 0,

@@ -25,9 +25,9 @@ class IrrigationScheduler:
             return DEFAULT_SCHEDULE
 
     def run_scheduled_watering(self):
-        """Run the scheduled watering for today with sequential zone activation"""
+        """Improved sequential watering with clean transitions"""
         try:
-            logging.info("Running scheduled watering")
+            logging.info("Starting scheduled watering sequence")
             weather = self.weather_provider()
             schedules = self.load_schedule()
             
@@ -35,33 +35,40 @@ class IrrigationScheduler:
             day_schedule = schedules['weekly'].get(today, {})
             
             # Apply weather adjustments
-            for zone, duration in day_schedule.items():
-                if weather['next_high_temp'] > 85:
-                    day_schedule[zone] = int(duration * HOT_WEATHER_EXTRA)
+            adjusted_schedule = {
+                zone: int(duration * HOT_WEATHER_EXTRA) 
+                if weather['next_high_temp'] > 85 else duration
+                for zone, duration in day_schedule.items()
+            }
             
-            # Water each zone sequentially
+            # Water each zone sequentially with proper delays
             for zone_idx, zone_name in enumerate(VALVE_NAMES):
-                if zone_name in day_schedule and day_schedule[zone_name] > 0:
-                    duration = day_schedule[zone_name]
-                    weather_condition = "Hot" if weather['next_high_temp'] > 85 else "Normal"
+                if zone_name in adjusted_schedule and adjusted_schedule[zone_name] > 0:
+                    duration = adjusted_schedule[zone_name]
+                    weather_cond = "Hot" if weather['next_high_temp'] > 85 else "Normal"
                     
-                    logging.info(f"Starting {zone_name} for {duration} minutes")
+                    # Clean activation
                     self.valve_controller.control_valve(
-                        zone_idx, 
-                        True, 
+                        zone_idx,
+                        True,
                         duration,
-                        weather_condition
+                        weather_cond
                     )
                     
-                    # Wait for this zone to complete
-                    time.sleep(duration * 60 + 5)  # Convert minutes to seconds + buffer
+                    # Wait for duration plus buffer
+                    time.sleep(duration * 60 + 2)  # Additional 2 second buffer
                     
-                    # Safety check
+                    # Explicit clean deactivation
                     self.valve_controller.control_valve(zone_idx, False)
-                    logging.info(f"Completed watering {zone_name}")
+                    
+                    # Inter-zone delay
+                    time.sleep(5)  # 5 second delay between zones
+                    
+            logging.info("Completed watering sequence")
             
         except Exception as e:
-            logging.error(f"Error in scheduled watering: {str(e)}")
+            logging.error(f"Watering sequence error: {str(e)}")
+            self.valve_controller.emergency_stop()
 
     def schedule_daily_watering(self):
         """Schedule the daily watering job at 6 AM"""

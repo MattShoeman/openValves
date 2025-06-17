@@ -22,15 +22,25 @@ class ValveController:
             GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
 
     def control_valve(self, valve_idx, state, duration_min=10, weather_condition="Normal"):
+        """Improved valve control with debouncing and state verification"""
         try:
             pin = VALVE_PINS[valve_idx]
-            if state:
-                # Cancel existing timer if any
-                if valve_idx in self.timers:
-                    self.timers[valve_idx].cancel()
+            current_state = GPIO.input(pin) == RELAY_ACTIVE
+            
+            # No action if already in desired state
+            if current_state == state:
+                return
                 
-                # Turn valve ON
+            # Cancel any existing timer for this valve
+            if valve_idx in self.timers:
+                self.timers[valve_idx].cancel()
+                del self.timers[valve_idx]
+                time.sleep(0.1)  # Brief delay for clean transition
+
+            if state:
+                # Turn valve ON with clean transition
                 GPIO.output(pin, RELAY_ACTIVE)
+                time.sleep(0.2)  # Stabilization delay
                 self.valve_states[valve_idx] = True
                 
                 # Log watering event
@@ -42,23 +52,21 @@ class ValveController:
                         'weather': weather_condition
                     })
                 
-                # Start shutoff timer
-                timer = threading.Timer(duration_min * 60, lambda: self.control_valve(valve_idx, False))
-                timer.start()
-                self.timers[valve_idx] = timer
+                # Start shutoff timer if duration specified
+                if duration_min > 0:
+                    timer = threading.Timer(duration_min * 60, 
+                                        lambda: self.control_valve(valve_idx, False))
+                    timer.start()
+                    self.timers[valve_idx] = timer
                 
                 logging.info(f"Valve {VALVE_NAMES[valve_idx]} ON for {duration_min} minutes")
             else:
-                # Turn valve OFF
+                # Turn valve OFF with clean transition
                 GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
+                time.sleep(0.2)  # Stabilization delay
                 self.valve_states[valve_idx] = False
-                
-                # Cancel timer if exists
-                if valve_idx in self.timers:
-                    self.timers[valve_idx].cancel()
-                    del self.timers[valve_idx]
-                
                 logging.info(f"Valve {VALVE_NAMES[valve_idx]} OFF")
+                
         except Exception as e:
             logging.error(f"Error controlling valve {VALVE_NAMES[valve_idx]}: {str(e)}")
             raise
