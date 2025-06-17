@@ -131,7 +131,7 @@ def control_valve(valve_idx, state, duration_min=10):
         logging.error(f"Error controlling valve {VALVE_NAMES[valve_idx]}: {str(e)}")
 
 def run_scheduled_watering():
-    """Run the scheduled watering for today"""
+    """Run the scheduled watering for today with sequential zone activation"""
     try:
         logging.info("Running scheduled watering")
         weather = get_weather_forecast()
@@ -145,12 +145,22 @@ def run_scheduled_watering():
             if weather['next_high_temp'] > 85:
                 day_schedule[zone] = int(duration * HOT_WEATHER_EXTRA)
         
-        # Water each zone sequentially
+        # Water each zone sequentially with proper waiting
         for zone_idx, zone_name in enumerate(VALVE_NAMES):
             if zone_name in day_schedule and day_schedule[zone_name] > 0:
-                control_valve(zone_idx, True, day_schedule[zone_name])
-                time.sleep(15)  # Short break between zones
-        
+                duration = day_schedule[zone_name]
+                logging.info(f"Starting {zone_name} for {duration} minutes")
+                
+                # Turn on the current zone
+                control_valve(zone_idx, True, duration)
+                
+                # Wait for this zone to complete (duration + small buffer)
+                time.sleep(duration * 60 + 5)  # Convert minutes to seconds and add 5s buffer
+                
+                # Ensure the valve is off before proceeding (safety check)
+                control_valve(zone_idx, False)
+                logging.info(f"Completed watering {zone_name}")
+                
     except Exception as e:
         logging.error(f"Error in scheduled watering: {str(e)}")
 
