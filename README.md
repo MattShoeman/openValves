@@ -17,7 +17,8 @@ Automated watering system that adjusts based on weather forecasts
 - 4-channel relay module  
 - Solenoid valves (12V or 24V)  
 - Waterproof enclosure  
-- Power supply for valves  
+- Power supply for valves
+- [![Bill of Materials](https://docs.google.com/spreadsheets/d/14KFi8By2FL1IUUs16bJJF-sFFORRKznYOV_ILq-R138/edit?usp=sharing)]
 
 ## 🚀 Installation  
 ```bash  
