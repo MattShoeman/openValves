@@ -19,6 +19,7 @@ Automated watering system that adjusts based on weather forecasts
 - Solenoid valves (24VAC)
 - Waterproof enclosure
 - Power supply for valves
+- [Hardware Bill of Materials](https://docs.google.com/spreadsheets/d/14KFi8By2FL1IUUs16bJJF-sFFORRKznYOV_ILq-R138/edit?usp=sharing)
 
 ## 🚀 Installation
 ```bash
