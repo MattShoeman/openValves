@@ -5,14 +5,15 @@ from datetime import datetime
 import time
 import logging
 from config import VALVE_NAMES, VALVE_PINS, RELAY_ACTIVE
+from database import log_watering_event, get_watering_history
 
 class ValveController:
     def __init__(self):
         self.valve_states = [False] * len(VALVE_NAMES)
-        self.watering_history = []
-        self.history_lock = Lock()
         self._setup_gpio()
         self.timers = {}
+        # Removed the watering_history list since we're using SQLite now
+        self.history_lock = Lock()  # Keep lock for thread safety with timers
 
     def _setup_gpio(self):
         GPIO.setmode(GPIO.BCM)
@@ -21,7 +22,7 @@ class ValveController:
             GPIO.setup(pin, GPIO.OUT)
             GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
 
-    def control_valve(self, valve_idx, state, duration_min=10, weather_condition="Normal"):
+    def control_valve(self, valve_idx, state, duration=10, weather="Normal"):
         try:
             pin = VALVE_PINS[valve_idx]
             if state:
@@ -33,21 +34,19 @@ class ValveController:
                 GPIO.output(pin, RELAY_ACTIVE)
                 self.valve_states[valve_idx] = True
                 
-                # Log watering event
-                with self.history_lock:
-                    self.watering_history.append({
-                        'time': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'zone': VALVE_NAMES[valve_idx],
-                        'duration': duration_min,
-                        'weather': weather_condition
-                    })
+                # Log watering event to database
+                log_watering_event(
+                    zone=VALVE_NAMES[valve_idx],
+                    duration=duration,
+                    weather=weather
+                )
                 
                 # Start shutoff timer
-                timer = threading.Timer(duration_min * 60, lambda: self.control_valve(valve_idx, False))
+                timer = threading.Timer(duration * 60, lambda: self.control_valve(valve_idx, False))
                 timer.start()
                 self.timers[valve_idx] = timer
                 
-                logging.info(f"Valve {VALVE_NAMES[valve_idx]} ON for {duration_min} minutes")
+                logging.info(f"Valve {VALVE_NAMES[valve_idx]} ON for {duration} minutes")
             else:
                 # Turn valve OFF
                 GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
@@ -67,8 +66,12 @@ class ValveController:
         return [GPIO.input(pin) == RELAY_ACTIVE for pin in VALVE_PINS]
 
     def get_watering_history(self):
-        with self.history_lock:
-            return self.watering_history.copy()
+        """Get watering history from database"""
+        try:
+            return get_watering_history()
+        except Exception as e:
+            logging.error(f"Error getting watering history: {str(e)}")
+            return []
 
     def emergency_stop(self):
         for i in range(len(VALVE_NAMES)):

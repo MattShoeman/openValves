@@ -10,6 +10,7 @@ from gpio_controller import ValveController
 from scheduler import IrrigationScheduler
 from weather import get_weather_forecast
 from config import VALVE_NAMES
+from database import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -20,6 +21,7 @@ logging.basicConfig(
 # Initialize system components
 valve_controller = ValveController()
 irrigation_scheduler = IrrigationScheduler(valve_controller, get_weather_forecast)
+init_db()
 
 # Initialize Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
