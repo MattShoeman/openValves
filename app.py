@@ -12,6 +12,7 @@ from weather import get_weather_forecast
 from config import VALVE_NAMES
 from database import init_db
 
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
