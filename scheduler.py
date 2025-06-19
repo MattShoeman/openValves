@@ -1,6 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
+import pytz
 import time
 import logging
 import json
@@ -12,6 +13,7 @@ class IrrigationScheduler:
         self.valve_controller = valve_controller
         self.weather_provider = weather_provider
         self.scheduler = BackgroundScheduler(daemon=True)
+        logging.info("Starting scheduler service...")  # Add this line
         self.scheduler.start()
         self.schedule_daily_watering()
 
@@ -72,7 +74,7 @@ class IrrigationScheduler:
 
     def schedule_daily_watering(self):
         """Schedule the daily watering job at 6 AM"""
-        trigger = CronTrigger(hour=6, minute=0)
+        trigger = CronTrigger(hour=6, minute=0, timezone=pytz.timezone('America/Los_Angeles'))
         self.scheduler.add_job(
             self.run_scheduled_watering,
             trigger=trigger,
