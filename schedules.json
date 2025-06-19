@@ -9,7 +9,7 @@
     "Monday": {
       "Patio": 45,
       "Flowers": 15,
-      "Fig": 60,
+      "Fig": 40,
       "Apple": 60
     },
     "Tuesday": {
@@ -21,24 +21,24 @@
     "Wednesday": {
       "Patio": 0,
       "Flowers": 15,
-      "Fig": 35,
+      "Fig": 0,
       "Apple": 0
     },
     "Thursday": {
       "Patio": 0,
-      "Flowers": 0,
-      "Fig": 0,
+      "Flowers": 15,
+      "Fig": 30,
       "Apple": 0
     },
     "Friday": {
       "Patio": 0,
-      "Flowers": 0,
+      "Flowers": 15,
       "Fig": 0,
       "Apple": 0
     },
     "Saturday": {
       "Patio": 0,
-      "Flowers": 0,
+      "Flowers": 15,
       "Fig": 0,
       "Apple": 0
     }

@@ -5,12 +5,12 @@ import plotly.graph_objects as go
 import logging
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from gpio_controller import ValveController
 from scheduler import IrrigationScheduler
 from weather import get_weather_forecast
-from config import VALVE_NAMES
-from database import init_db
+from config import VALVE_NAMES, WATER_FLOW_RATES
+from database import init_db, get_watering_history, calculate_water_usage, project_water_usage, WATER_RATES, WATER_FLOW_RATES
 
 
 # Configure logging
@@ -159,6 +159,32 @@ history_card = dbc.Card([
     ])
 ])
 
+# 6. Water Usage Card
+water_usage_card = dbc.Card([
+    dbc.CardHeader("Water Usage", className="bg-info text-white"),
+    dbc.CardBody([
+        html.Div(id="water-usage-content"),  # This will contain both stats and graph
+        html.Div([
+            html.Small([
+                "Based on ",
+                html.A("Corvallis Utility Rates", 
+                      href="https://www.corvallisoregon.gov/publicworks/page/utility-rates",
+                      target="_blank")
+            ]),
+            html.Br(),
+            html.Small("Fixed Charges: $110.22/month"),
+            html.Br(),
+            html.Small("Water Usage: $3.00/hcf (first 7 hcf)"),
+            html.Br(),
+            html.Small("Then $3.38/hcf"),
+            html.Br(),
+            html.Small("Wastewater: $3.72/hcf"),
+            html.Br(),
+            html.Small("1 hcf (hundred cubic feet) = 748 gallons"),
+        ], className="text-muted small mt-2")
+    ])
+])
+
 # ====================== LAYOUT ======================
 app.layout = dbc.Container([
     html.H1("Smart Irrigation Control System", className="text-center my-4"),
@@ -172,8 +198,9 @@ app.layout = dbc.Container([
     
     # Bottom Row
     dbc.Row([
-        dbc.Col(weather_card, md=6, className="mb-3"),
-        dbc.Col(history_card, md=6, className="mb-3")
+        dbc.Col(weather_card, md=4, className="mb-3"),
+        dbc.Col(history_card, md=4, className="mb-3"),
+        dbc.Col(water_usage_card, md=4, className="mb-3")
     ], className="g-3"),
     
     # Hidden Components
@@ -363,6 +390,155 @@ def save_schedule(n_clicks, table_data):
     except Exception as e:
         return dbc.Alert(f"Error saving schedule: {str(e)}", color="danger")
 
+@app.callback(
+    Output("water-usage-content", "children"),
+    [Input("status-update", "n_intervals")]
+)
+def update_water_usage(n):
+    try:
+        # Get data
+        historical = calculate_water_usage(30) or {
+            'total_gallons': 0,
+            'total_hcf': 0,
+            'total_cost': 0,
+            'cost_breakdown': {
+                'fixed_charges': 0,
+                'water_charges': 0,
+                'wastewater_charges': 0
+            },
+            'zone_usage': {},
+            'history': [],
+            'calculation_period_days': 30
+        }
+
+        projected = project_water_usage(30) or {
+            'total_gallons': 0,
+            'total_hcf': 0,
+            'total_cost': 0,
+            'cost_breakdown': {
+                'fixed_charges': 0,
+                'water_charges': 0,
+                'wastewater_charges': 0
+            },
+            'zone_usage': {},
+            'calculation_period_days': 30
+        }
+
+        # Create combined graph
+        fig = go.Figure()
+        today = datetime.now().date()
+        
+        # Add historical data
+        if historical.get('history'):
+            daily_usage = {}
+            for event in historical['history']:
+                try:
+                    date_str = event['time'].split()[0] if isinstance(event['time'], str) else event['time']
+                    date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                    if date >= today - timedelta(days=30):  # Only show last 30 days
+                        zone = event['zone']
+                        duration = event['duration']
+                        gallons = duration * WATER_FLOW_RATES.get(zone, 1)
+                        daily_usage[date] = daily_usage.get(date, 0) + gallons
+                except Exception as e:
+                    logging.warning(f"Skipping malformed history entry: {str(e)}")
+                    continue
+            
+            if daily_usage:
+                dates = sorted(daily_usage.keys())
+                fig.add_trace(go.Bar(
+                    x=dates,
+                    y=[daily_usage[date] for date in dates],
+                    name='Historical Usage',
+                    marker_color='#1f77b4'
+                ))
+
+        # Add projected data
+        if projected['total_gallons'] > 0:
+            future_dates = [today + timedelta(days=i) for i in range(30)]
+            avg_daily = projected['total_gallons'] / 30
+            fig.add_trace(go.Scatter(
+                x=future_dates,
+                y=[avg_daily] * 30,
+                name='Projected Average',
+                line=dict(color='#ff7f0e', width=2, dash='dot'),
+                mode='lines'
+            ))
+
+        # Update graph layout
+        if fig.data:
+            fig.update_layout(
+                title="60-Day Water Usage (Historical + Projected)",
+                yaxis_title="Gallons per Day",
+                xaxis_title="Date",
+                hovermode="x",
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+
+        return [
+            # Combined graph spanning full width
+            dcc.Graph(
+                figure=fig,
+                config={'displayModeBar': False},
+                style={'height': '400px', 'margin-bottom': '20px'}
+            ),
+            
+            # Two columns for stats below the graph
+            dbc.Row([
+                # Historical Data Column
+                dbc.Col([
+                    html.H4("Past 30 Days", className="text-center"),
+                    html.Hr(),
+                    html.H5("Usage by Zone:"),
+                    *([html.P(f"{zone}: {round(gallons)} gal") 
+                       for zone, gallons in historical.get('zone_usage', {}).items()]
+                      if historical.get('zone_usage') 
+                      else [html.P("No data", className="text-muted")]),
+                    html.Hr(),
+                    html.P(f"Water Used: {round(historical['total_gallons'])} gallons ({round(historical['total_hcf'], 2)} hcf)"),
+                    html.P(f"Total Cost: ${historical['total_cost']:.2f}"),
+                    html.Hr(),
+                    html.H5("Cost Breakdown:"),
+                    html.P(f"Fixed: ${historical['cost_breakdown']['fixed_charges']:.2f}"),
+                    html.P(f"Water: ${historical['cost_breakdown']['water_charges']:.2f}"),
+                    html.P(f"Wastewater: ${historical['cost_breakdown']['wastewater_charges']:.2f}"),
+                    
+                ], md=6, className="pe-3"),
+                
+                # Projected Data Column
+                dbc.Col([
+                    html.H4("Next 30 Days (Projected)", className="text-center"),
+                    html.Hr(),
+                    html.H5("Projected by Zone:"),
+                    *([html.P(f"{zone}: {round(gallons)} gal") 
+                       for zone, gallons in projected.get('zone_usage', {}).items()]
+                      if projected.get('zone_usage') 
+                      else [html.P("No projection", className="text-muted")]),
+                    html.Hr(),
+                    html.P(f"Estimated Water: {round(projected['total_gallons'])} gallons ({round(projected['total_hcf'], 2)} hcf)"),
+                    html.P(f"Estimated Cost: ${projected['total_cost']:.2f}"),
+                    html.Hr(),
+                    html.H5("Cost Breakdown:"),
+                    html.P(f"Fixed: ${projected['cost_breakdown']['fixed_charges']:.2f}"),
+                    html.P(f"Water: ${projected['cost_breakdown']['water_charges']:.2f}"),
+                    html.P(f"Wastewater: ${projected['cost_breakdown']['wastewater_charges']:.2f}"),
+                    
+                    html.Hr(),
+                    html.Small("Projection based on current watering schedule and weather patterns", 
+                             className="text-muted")
+                ], md=6)
+            ], className="g-3")
+        ]
+
+    except Exception as e:
+        logging.error(f"Error in water usage calculation: {str(e)}")
+        return dbc.Alert([
+            html.H4("Error Loading Data", className="alert-heading"),
+            html.P("Could not calculate water usage statistics."),
+            html.P(f"Error: {str(e)}", className="mb-0")
+        ], color="danger")
+        
 @app.callback(
     Output("history-table", "data"),
     Input("status-update", "n_intervals")
