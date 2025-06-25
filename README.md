@@ -25,11 +25,12 @@ Automated watering system that adjusts based on weather forecasts
 ```bash
 # Initial Updates
 sudo apt-get update
-sudo apt-get install git python3-dev python3-pip python3-venv
+sudo apt-get -y install git python3-dev python3-pip
 
 # Clone repository
 git clone https://github.com/MattShoeman/openValves.git
 cd openValves
+git checkout DashInterface
 
 # Create virtual environment
 python3 -m venv venv
