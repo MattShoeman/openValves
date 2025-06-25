@@ -23,6 +23,10 @@ Automated watering system that adjusts based on weather forecasts
 
 ## 🚀 Installation
 ```bash
+# Initial Updates
+sudo apt-get update
+sudo apt-get install git python3-dev python3-pip python3-venv
+
 # Clone repository
 git clone https://github.com/MattShoeman/openValves.git
 cd openValves
@@ -33,6 +37,14 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+python3 app.py
+
+✅ Success: Open a web browser and view the private IP address of the raspberry pi.
+
+❌ Debug: Fix it
+```
+
+## How to make a daemon service for automatic operation and restart upon reboot
 Paste the following (adjust paths if needed):
 
 [Unit]
