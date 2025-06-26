@@ -4,6 +4,7 @@ dash-table==5.0.0
 plotly==5.18.0
 Flask==2.3.2
 selenium==4.15.2
+chromedriver-binary==139.0.7223.0.0
 webdriver-manager==4.0.1
 RPi.GPIO==0.7.1
 apscheduler==3.10.4
