@@ -25,7 +25,7 @@ Automated watering system that adjusts based on weather forecasts
 ```bash
 # Initial Updates
 sudo apt-get update
-sudo apt-get -y install git python3-dev python3-pip
+sudo apt-get -y install git python3-dev python3-pip chromium-browser
 
 # Clone repository
 git clone https://github.com/MattShoeman/openValves.git
