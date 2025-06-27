@@ -15,6 +15,7 @@ IRRIGATION_DIR="/home/user/openValves"
 if [ ! -d "$IRRIGATION_DIR" ]; then
     git clone https://github.com/MattShoeman/openValves.git "$IRRIGATION_DIR" \
         || { echo "ERROR: Failed to clone repository"; exit 1; }
+    git checkout DashInterface
 fi
 
 echo "Setting up Python environment..."
