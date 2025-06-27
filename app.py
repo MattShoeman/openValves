@@ -16,8 +16,10 @@ from database import init_db, get_watering_history, calculate_water_usage, proje
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
+    filename='/var/log/irrigation/app.log',  # Now in RAM
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
 
 # Initialize system components
 valve_controller = ValveController()

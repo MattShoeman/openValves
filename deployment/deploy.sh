@@ -6,6 +6,46 @@ exec > >(tee -a /var/log/irrigation-deploy.log) 2>&1
 echo "=== Irrigation System Deployment Starting at $(date) ==="
 
 # ==============================================
+# SD CARD OPTIMIZATIONS (NEW)
+# ==============================================
+
+echo "Configuring SD card optimizations..."
+
+# 1. Move logs to RAM (tmpfs)
+echo "Setting up RAM disk for logs..."
+sudo mkdir -p /var/log/irrigation
+sudo chown $(whoami):$(whoami) /var/log/irrigation
+if ! grep -q "irrigation_logs" /etc/fstab; then
+    echo "tmpfs    /var/log/irrigation    tmpfs    defaults,noatime,nosuid,size=10m    0    0" | sudo tee -a /etc/fstab
+fi
+sudo mount /var/log/irrigation || true
+
+# 2. Disable atime updates system-wide
+echo "Disabling atime updates..."
+sudo sed -i 's/defaults/defaults,noatime/g' /etc/fstab
+sudo mount -o remount /
+
+# 3. Install log2ram for system logs (better than manual tmpfs)
+echo "Installing log2ram for system logs..."
+if ! command -v log2ram &> /dev/null; then
+    curl -Lo log2ram.tar.gz https://github.com/azlux/log2ram/archive/master.tar.gz
+    tar xf log2ram.tar.gz
+    cd log2ram-master
+    chmod +x install.sh
+    sudo ./install.sh
+    cd ..
+    rm -rf log2ram-master log2ram.tar.gz
+    sudo systemctl restart log2ram
+fi
+
+# 4. Reduce swappiness
+echo "Reducing swap usage..."
+if ! grep -q "vm.swappiness" /etc/sysctl.conf; then
+    echo "vm.swappiness=5" | sudo tee -a /etc/sysctl.conf
+    sudo sysctl -p
+fi
+
+# ==============================================
 # DEPENDENCY INSTALLATION
 # ==============================================
 
@@ -19,6 +59,7 @@ sudo apt-get install -y \
     python3-dev \
     git \
     chromium-chromedriver \
+    sqlite3 \
     || { echo "ERROR: Failed to install dependencies"; exit 1; }
 
 # ==============================================
@@ -26,7 +67,7 @@ sudo apt-get install -y \
 # ==============================================
 
 echo "Setting up repository..."
-IRRIGATION_DIR="/home/user/openValves"
+IRRIGATION_DIR="/home/$(whoami)/openValves"
 if [ ! -d "$IRRIGATION_DIR" ]; then
     echo "Cloning repository..."
     git clone https://github.com/MattShoeman/openValves.git "$IRRIGATION_DIR" \
@@ -37,6 +78,23 @@ else
     echo "Repository already exists at $IRRIGATION_DIR"
     cd "$IRRIGATION_DIR"
     git pull || { echo "WARNING: Failed to pull latest changes"; }
+fi
+
+# ==============================================
+# DATABASE OPTIMIZATIONS (NEW)
+# ==============================================
+
+echo "Configuring database optimizations..."
+DB_FILE="$IRRIGATION_DIR/irrigation.db"
+
+# Enable WAL mode and other SQLite optimizations
+if [ -f "$DB_FILE" ]; then
+    echo "Optimizing existing database..."
+    sqlite3 "$DB_FILE" "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA cache_size=-4000;"
+else
+    echo "Creating new optimized database..."
+    touch "$DB_FILE"
+    sqlite3 "$DB_FILE" "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA cache_size=-4000;"
 fi
 
 # ==============================================
@@ -69,14 +127,17 @@ StartLimitIntervalSec=500
 StartLimitBurst=5
 
 [Service]
-User=user
+User=$(whoami)
 WorkingDirectory=$IRRIGATION_DIR
 Environment="PATH=$IRRIGATION_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="DISPLAY=:0"
-Environment="XAUTHORITY=/home/user/.Xauthority"
+Environment="XAUTHORITY=/home/$(whoami)/.Xauthority"
 ExecStart=$IRRIGATION_DIR/venv/bin/python $IRRIGATION_DIR/app.py
 Restart=always
 RestartSec=10s
+# Log to RAM disk
+StandardOutput=file:/var/log/irrigation/service.log
+StandardError=file:/var/log/irrigation/error.log
 
 [Install]
 WantedBy=multi-user.target
@@ -110,17 +171,6 @@ else
 fi
 
 # ==============================================
-# FIREWALL CONFIGURATION (OPTIONAL)
-# ==============================================
-
-echo "Configuring firewall..."
-if command -v ufw &> /dev/null; then
-    sudo ufw allow 8050/tcp || echo "WARNING: Failed to configure firewall"
-else
-    echo "ufw not installed, skipping firewall configuration"
-fi
-
-# ==============================================
 # FINAL OUTPUT
 # ==============================================
 
@@ -129,13 +179,13 @@ echo "System information:"
 echo "Hostname: $(hostname)"
 echo "IP Addresses: $(hostname -I)"
 echo "Service status: $(systemctl is-active irrigation.service)"
+echo "SD Card optimizations applied:"
+echo "1. Logs moved to RAM (tmpfs)"
+echo "2. WAL mode enabled for SQLite"
+echo "3. noatime enabled system-wide"
+echo "4. Reduced swappiness (vm.swappiness=5)"
+echo ""
 echo "Access the system at:"
 echo "http://$(hostname -I | cut -d' ' -f1):8050"
-echo "or http://openValves.local:8050"
-
-echo "Debugging tips:"
-echo "1. View service logs: journalctl -u irrigation.service -f"
-echo "2. Test manually: cd $IRRIGATION_DIR && venv/bin/python app.py"
-echo "3. Check network: ping $(hostname -I | cut -d' ' -f1)"
 
 exit 0
