@@ -5,7 +5,7 @@
 # ==============================================
 
 echo "Configuring irrigation service..."
-cat > /etc/systemd/system/irrigation.service <<EOF
+sudo cat > /etc/systemd/system/irrigation.service <<EOF
 [Unit]
 Description=Smart Irrigation System
 After=network.target
@@ -22,9 +22,9 @@ RestartSec=10s
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable irrigation.service
-systemctl start irrigation.service
+sudo systemctl daemon-reload
+sudo systemctl enable irrigation.service
+sudo systemctl start irrigation.service
 
 # ==============================================
 # FINAL CHECKS
