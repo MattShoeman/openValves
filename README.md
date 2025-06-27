@@ -23,60 +23,15 @@ Automated watering system that adjusts based on weather forecasts
 
 ## 🚀 Installation
 ```bash
-# Initial Updates
-sudo apt-get update
-sudo apt-get -y install git python3-dev python3-pip chromium-chromedriver
+# Copy the deploy.sh script from the repo onto a freshly installed raspberry pi.  This was tested with the Raspberry Pi4 using Raspberry Pi OS Lite (Bookworm and 64-bit)
+# Suggested copying it into /home/user/  ,where user is the name of the user.  This creates some absolute directory references that would need to be updated if the user is names something else.
 
-# Clone repository
-git clone https://github.com/MattShoeman/openValves.git
-cd openValves
-git checkout DashInterface
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-python3 app.py
+# Simple command to update the pi, install apts with apt-get, install python packages with pip, clone the repo, and create systemd services.
+bash deploy.sh
 
 ✅ Success: Open a web browser and view the private IP address of the raspberry pi.
 
 ❌ Debug: Fix it
-```
-
-## How to make a daemon service for automatic operation and restart upon reboot
-Paste the following (adjust paths if needed):
-
-[Unit]
-Description=Smart Irrigation Dashboard
-After=network.target
-
-[Service]
-User=user
-WorkingDirectory=/home/user/openValves
-Environment="PATH=/home/user/openValves/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/home/user/openValves/venv/bin/python /home/user/openValves/app.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-
-Enable the service:
-
-sudo systemctl daemon-reload  
-sudo systemctl enable smart_irrigation.service  
-sudo systemctl start smart_irrigation.service  
-
-Verify it's running:
-
-sudo systemctl status smart_irrigation.service  
-
-✅ Success: Output shows active (running).
-
-❌ Debug: Check logs with journalctl -u smart_irrigation.service -f.
-
 
 ```
 # :bulb: What's Next?
