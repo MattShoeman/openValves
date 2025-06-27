@@ -5,23 +5,7 @@
 # ==============================================
 
 echo "Configuring irrigation service..."
-sudo touch /etc/systemd/system/irrigation.service
-sudo cat > /etc/systemd/system/irrigation.service <<EOF
-[Unit]
-Description=Smart Irrigation System
-After=network.target
-
-[Service]
-User=user
-WorkingDirectory=/home/user/openValves
-Environment="PATH=/home/user/openValves/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/home/user/openValves/venv/bin/python /home/user/openValves/app.py
-Restart=always
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-EOF
+sudo cp ~/openValves/deployment/irrigation.service /etc/systemd/system/irrigation.service
 
 sudo systemctl daemon-reload
 sudo systemctl enable irrigation.service

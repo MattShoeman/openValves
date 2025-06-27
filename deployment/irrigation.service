@@ -1,0 +1,14 @@
+[Unit]
+Description=Smart Irrigation System
+After=network.target
+
+[Service]
+User=user
+WorkingDirectory=/home/user/openValves
+Environment="PATH=/home/user/openValves/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/user/openValves/venv/bin/python /home/user/openValves/app.py
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
