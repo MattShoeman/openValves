@@ -5,6 +5,7 @@
 # ==============================================
 
 echo "Configuring irrigation service..."
+sudo touch /etc/systemd/system/irrigation.service
 sudo cat > /etc/systemd/system/irrigation.service <<EOF
 [Unit]
 Description=Smart Irrigation System
