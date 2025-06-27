@@ -116,7 +116,7 @@ def calculate_water_usage(days=30):
             for event in history:
                 zone = event['zone']
                 duration = event['duration']
-                flow_rate = WATER_FLOW_RATES.get(zone, 1)
+                flow_rate = WATER_FLOW_RATES.get(zone, 1)  # Default to 1 if zone not found
                 gallons = duration * flow_rate
                 total_gallons += gallons
                 if zone not in zone_usage:
@@ -224,6 +224,7 @@ def project_water_usage(days=30):
     except Exception as e:
         logging.error(f"Error projecting water usage: {str(e)}")
         return None
+
 
 # Initialize database on import
 init_db()

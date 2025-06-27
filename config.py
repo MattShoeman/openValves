@@ -3,9 +3,21 @@ from pathlib import Path
 import json
 
 # Hardware Configuration
-VALVE_NAMES = ["Patio", "Flowers", "Fig", "Apple"]
-VALVE_PINS = [17, 18, 27, 22]  # BCM numbering
+VALVE_NAMES = ["Lawn-Patio", "Lawn-Fig", "Lawn-Apple", "Garden-Berries", "Garden-Flowers", "Garden-Beds", "Garden-Tomatoes"]
+VALVE_PINS = [4, 17, 27, 25, 24, 23, 22]  # BCM numbering
+GARDEN_MASTER_PIN = 18 
 RELAY_ACTIVE = GPIO.LOW
+
+# Water Usage Configuration
+WATER_FLOW_RATES = {
+    "Lawn-Fig": 3,             # gallons per minute
+    "Lawn-Patio": 3,           # gallons per minute
+    "Lawn-Apple": 3,           # gallons per minute
+    "Garden-Berries": 1,  # gallons per minute
+    "Garden-Flowers": 1,  # gallons per minute
+    "Garden-Beds": 1,     # gallons per minute
+    "Garden-Tomatoes": 1  # gallons per minute
+}
 
 # System Settings
 SCHEDULE_FILE = "schedules.json"
@@ -23,14 +35,6 @@ DEFAULT_SCHEDULE = {
         "Saturday": {"Patio": 40, "Flowers": 25, "Fig": 30, "Apple": 40}
     },
     "special": {}
-}
-
-# Water Usage Configuration
-WATER_FLOW_RATES = {
-    "Flowers": 1,  # gallons per minute
-    "Fig": 3,      # gallons per minute
-    "Patio": 3,    # gallons per minute
-    "Apple": 3     # gallons per minute
 }
 
 WATER_RATES = {
