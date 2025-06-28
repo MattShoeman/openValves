@@ -28,50 +28,51 @@ class ValveController:
     def control_valve(self, valve_idx, state, duration=10, weather="Normal"):
         try:
             pin = VALVE_PINS[valve_idx]
+            zone_name = VALVE_NAMES[valve_idx]
+            
             if state:
-                # For garden subzones (indices 1-4), activate master valve first
-                if 1 <= valve_idx <= 4:
+                # For ALL garden zones (names starting with "Garden-"), activate master valve first
+                if zone_name.startswith("Garden-"):
                     GPIO.output(GARDEN_MASTER_PIN, RELAY_ACTIVE)
                     time.sleep(0.5)  # Small delay for master valve to activate
-            
+                
                 # Cancel existing timer if any
                 if valve_idx in self.timers:
                     self.timers[valve_idx].cancel()
-            
-                # Turn valve ON
+                
+                # Rest of the ON logic remains the same...
                 GPIO.output(pin, RELAY_ACTIVE)
                 self.valve_states[valve_idx] = True
-            
-                # Log watering event to database
+                
                 log_watering_event(
-                    zone=VALVE_NAMES[valve_idx],
+                    zone=zone_name,
                     duration=duration,
                     weather=weather
                 )
-            
-                # Start shutoff timer
+                
                 timer = threading.Timer(duration * 60, lambda: self.control_valve(valve_idx, False))
                 timer.start()
                 self.timers[valve_idx] = timer
-            
-                logging.info(f"Valve {VALVE_NAMES[valve_idx]} ON for {duration} minutes")
+                
+                logging.info(f"Valve {zone_name} ON for {duration} minutes")
             else:
                 # Turn valve OFF
                 GPIO.output(pin, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
                 self.valve_states[valve_idx] = False
-            
-                # For garden subzones, turn off master valve if no other subzones are active
-                if 1 <= valve_idx <= 4:
-                    garden_active = any(self.valve_states[1:5])  # Check indices 1-4
+                
+                # For garden zones, check if any others are active before turning off master
+                if zone_name.startswith("Garden-"):
+                    garden_active = any(self.valve_states[i] for i, name in enumerate(VALVE_NAMES) 
+                                   if name.startswith("Garden-"))
                     if not garden_active:
                         GPIO.output(GARDEN_MASTER_PIN, GPIO.HIGH if RELAY_ACTIVE == GPIO.LOW else GPIO.LOW)
-            
+                
                 # Cancel timer if exists
                 if valve_idx in self.timers:
                     self.timers[valve_idx].cancel()
                     del self.timers[valve_idx]
-            
-                logging.info(f"Valve {VALVE_NAMES[valve_idx]} OFF")
+                
+                logging.info(f"Valve {zone_name} OFF")
         except Exception as e:
             logging.error(f"Error controlling valve {VALVE_NAMES[valve_idx]}: {str(e)}")
             raise
