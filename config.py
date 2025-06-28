@@ -4,8 +4,8 @@ import json
 
 # Hardware Configuration
 VALVE_NAMES = ["Lawn-Patio", "Lawn-Fig", "Lawn-Apple", "Garden-Berries", "Garden-Flowers", "Garden-Beds", "Garden-Tomatoes"]
-VALVE_PINS = [4, 17, 27, 25, 24, 23, 22]  # BCM numbering
-GARDEN_MASTER_PIN = 18 
+VALVE_PINS = [27, 4, 18, 22, 24, 25, 23]  # BCM numbering
+GARDEN_MASTER_PIN = 17 
 RELAY_ACTIVE = GPIO.LOW
 
 # Water Usage Configuration
@@ -13,10 +13,10 @@ WATER_FLOW_RATES = {
     "Lawn-Fig": 3,             # gallons per minute
     "Lawn-Patio": 3,           # gallons per minute
     "Lawn-Apple": 3,           # gallons per minute
-    "Garden-Berries": 1,  # gallons per minute
-    "Garden-Flowers": 1,  # gallons per minute
-    "Garden-Beds": 1,     # gallons per minute
-    "Garden-Tomatoes": 1  # gallons per minute
+    "Garden-Berries": .2,  # gallons per minute
+    "Garden-Flowers": .5,  # gallons per minute
+    "Garden-Beds": 1,      # gallons per minute
+    "Garden-Tomatoes": .5  # gallons per minute
 }
 
 # System Settings

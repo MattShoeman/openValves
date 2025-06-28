@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import RPi.GPIO as GPIO
 import time
+from config import VALVE_PINS as RELAY_PINS, GARDEN_MASTER_PIN, VALVE_NAMES as ZONE_NAMES
 
 # Configuration
-RELAY_PINS = [4, 25, 24, 23, 22, 17, 27]  # Subzone pins
-GARDEN_MASTER_PIN = 18  # Master valve pin
-ZONE_NAMES = ["Patio", "Garden-Berries", "Garden-Flowers", "Garden-Beds", "Garden-Tomatoes", "Fig", "Apple"]
+#RELAY_PINS = [4, 25, 24, 23, 22, 17, 27]  # Subzone pins
+#GARDEN_MASTER_PIN = 18  # Master valve pin
+#ZONE_NAMES = ["Patio", "Garden-Berries", "Garden-Flowers", "Garden-Beds", "Garden-Tomatoes", "Fig", "Apple"]
 TEST_DURATION = 20  # seconds for valve test
 
 def setup_gpio():
