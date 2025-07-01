@@ -113,7 +113,6 @@ status_card = dbc.Card([
     dbc.CardBody([
         html.Div(id="valve-status-indicators"),
         dbc.Progress(id="watering-progress", striped=True, animated=True, className="my-2"),
-        html.Div(id="last-watering-info", className="mt-3"),
         html.Div(id="system-messages")
     ])
 ], className="h-100")
@@ -215,7 +214,6 @@ app.layout = dbc.Container([
 
 @app.callback(
     [Output("valve-status-indicators", "children"),
-     Output("last-watering-info", "children"),
      Output("system-messages", "children"),
      *[Output(f"btn-{i}", "color") for i in range(len(VALVE_NAMES))]],
     [Input("status-update", "n_intervals"),
@@ -274,21 +272,10 @@ def update_system(interval, emergency_clicks, *args):
             dbc.Alert(f"{name}: {text}", color=color, className="p-2 m-1")
         )
     
-    # Last watering info
-    history = valve_controller.get_watering_history()
-    last_watering = "No watering history yet"
-    if history:
-        last = history[-1]
-        last_watering = [
-            html.H5("Last Watering:"),
-            html.P(f"{last['zone']} for {last['duration']} minutes"),
-            html.Small(f"at {last['time']} ({last['weather']})")
-        ]
-    
     # Button colors
     button_colors = ["danger" if state else "primary" for state in current_states]
     
-    return indicators, last_watering, message, *button_colors
+    return indicators, message, *button_colors
 
 @app.callback(
     [Output("weather-summary", "children"),

@@ -11,7 +11,7 @@
     },
     "Monday": {
       "Lawn-Patio": 45,
-      "Lawn-Fig": 30,
+      "Lawn-Fig": 40,
       "Lawn-Apple": 60,
       "Garden-Berries": 0,
       "Garden-Flowers": 0,
@@ -31,28 +31,28 @@
       "Lawn-Patio": 0,
       "Lawn-Fig": 0,
       "Lawn-Apple": 0,
-      "Garden-Berries": 200,
+      "Garden-Berries": 180,
       "Garden-Flowers": 0,
       "Garden-Beds": 0,
       "Garden-Tomatoes": 0
     },
     "Thursday": {
       "Lawn-Patio": 0,
-      "Lawn-Fig": 30,
+      "Lawn-Fig": 40,
       "Lawn-Apple": 0,
       "Garden-Berries": 0,
       "Garden-Flowers": 0,
       "Garden-Beds": 0,
-      "Garden-Tomatoes": 60
+      "Garden-Tomatoes": 45
     },
     "Friday": {
-      "Lawn-Patio": 1,
-      "Lawn-Fig": 1,
-      "Lawn-Apple": 1,
-      "Garden-Berries": 1,
-      "Garden-Flowers": 1,
-      "Garden-Beds": 1,
-      "Garden-Tomatoes": 1
+      "Lawn-Patio": 0,
+      "Lawn-Fig": 0,
+      "Lawn-Apple": 0,
+      "Garden-Berries": 0,
+      "Garden-Flowers": 0,
+      "Garden-Beds": 30,
+      "Garden-Tomatoes": 0
     },
     "Saturday": {
       "Lawn-Patio": 0,
